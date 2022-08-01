@@ -3,18 +3,18 @@ from pyspark.ml import PipelineModel
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
-# Путь для загрузки модели
+# Path to load the model
 MODEL_PATH = "./spark_ml_prod_model"
 
 
 def process(spark, input_file, output_file):
-    # input_file - путь к файлу с данными для которых нужно предсказать ctr
-    # output_file - путь к файлу с результатами [ads_id, prediction]
+    # input_file - path to the file with the data to predict CTR for
+    # output_file - path to the results file [ads_id, prediction]
 
-    # Загрузка модели
+    # Loading the model
     production_model = PipelineModel.load(MODEL_PATH)
 
-    # Загрузка данных
+    # Loading data
     file_type = "parquet"
     columns_list = [F.col("ad_id").cast("integer"), F.col("target_audience_count").cast("double"),
                     F.col("has_video").cast("double"), F.col("is_cpm").cast("double"),
@@ -23,12 +23,12 @@ def process(spark, input_file, output_file):
 
     test_df = spark.read.format(file_type).load(input_file).select(columns_list)
 
-    # Предсказания модели
+    # Model predictions
     predictions = production_model.transform(test_df)
     result = predictions.select(F.col("ad_id").alias("ad_id"),
                                 F.col("prediction").alias("ctr_prediction"))
 
-    # Сохранение результатов [ads_id, prediction]
+    # Saving results [ads_id, prediction]
     result.write.mode("overwrite").format(file_type).save(output_file)
 
 
