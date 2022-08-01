@@ -8,15 +8,15 @@ from pyspark.ml.evaluation import RegressionEvaluator
 import pyspark.sql.functions as F
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
-# Путь для сохранения лучшей модели
+# Path to save the best model
 MODEL_PATH = "./spark_ml_prod_model"
 
 
 def process(spark, train_data, test_data):
-    # train_data - путь к файлу с данными для обучения модели
-    # test_data - путь к файлу с данными для оценки качества модели
+    # train_data - the path to the data file for training the model
+    # test_data - the path to the data file for evaluating the quality of the model
 
-    # Загрузка данных в датафрейм
+    # Upload data to dataframe
     file_type = "parquet"
     columns_list = [F.col("ad_id").cast("integer"), F.col("target_audience_count").cast("double"),
                     F.col("has_video").cast("double"), F.col("is_cpm").cast("double"),
@@ -38,7 +38,7 @@ def process(spark, train_data, test_data):
     pre_pipeline = Pipeline(stages=[assembler_features])
     pre_pipeline_model = pre_pipeline.fit(train_df)
 
-    # Инициализация моделей
+    # Initializing models
     evaluator = RegressionEvaluator(predictionCol="prediction", labelCol="ctr", metricName="rmse")
     dt = DecisionTreeRegressor(featuresCol="features", labelCol="ctr")
     rf = RandomForestRegressor(featuresCol="features", labelCol="ctr")
@@ -53,7 +53,7 @@ def process(spark, train_data, test_data):
     best_rmse = inf
     production_model = None
 
-    # Подбор гиперпараметров, обучение моделей, сохранение лучшей модели для production
+    # Hyperparameter selection, model training, saving the best model
     for model in models:
         train_pipeline = Pipeline(stages=[pre_pipeline_model, models[model]["raw_model"]])
         param_grid = ParamGridBuilder().addGrid(models[model]["raw_model"].maxDepth, list(range(2, 10+1))).build()
@@ -69,7 +69,7 @@ def process(spark, train_data, test_data):
             best_rmse = rmse
             production_model = best_model
 
-    # Сохранение лучшей модели
+    # Saving the best model
     production_model.write().overwrite().save(MODEL_PATH)
 
 
